@@ -236,6 +236,12 @@ def parse_args():
         default=3200,
     )
     group.add_argument(
+        "--max_num_features",
+        help="maximum number of features for feature extraction",
+        type=int,
+        default=8192,
+    )
+    group.add_argument(
         "--domain_size_pooling",
         help="whether to use domain size pooling in feature extraction. (This helps to increase number of features, however it is slow as it only runs on CPU)",
         action="store_true",
@@ -318,6 +324,12 @@ def parse_args():
         help="whether to additionally export the optimized pose graph results together with the reconstruction.",
         action="store_true",
         default=False,
+    )
+    group.add_argument(
+        "--show_clusters",
+        help="whether to additionally export the reconstructed clusters together with the reconstruction.",
+        action="store_true",
+        default=False
     )
     group.add_argument(
         "--min_num_matches",
@@ -426,7 +438,7 @@ def parse_args():
         "--split_type",
         help="how to split the model?",
         type=str,
-        choices=["tiles, extent, parts"],
+        choices=["tiles", "extent", "parts"],
         default="parts",
     )
     group.add_argument(
@@ -511,6 +523,7 @@ class COLMAPOpenMVSPipeline:
         self.camera_refrac_model: str = args.camera_refrac_model
         self.camera_refrac_params: str = args.camera_refrac_params
         self.max_image_size: int = args.max_image_size
+        self.max_num_features: int = args.max_num_features
         self.domain_size_pooling: bool = args.domain_size_pooling
         self.camera_mask_path: str = args.camera_mask_path
         self.use_color_norm_in_features: bool = args.use_color_norm_in_features
@@ -526,6 +539,7 @@ class COLMAPOpenMVSPipeline:
         self.pgo_abs_pose_multi: float = args.pgo_abs_pose_multi
         self.pgo_smooth_multi: float = args.pgo_smooth_multi
         self.show_pgo_result: bool = args.show_pgo_result
+        self.show_clusters: bool = args.show_clusters
 
         self.min_num_matches: int = args.min_num_matches
         self.ba_local_num_images: int = args.ba_local_num_images
@@ -704,6 +718,8 @@ class COLMAPOpenMVSPipeline:
                 f"{self.gpu_index}",
                 "--SiftExtraction.max_image_size",
                 f"{self.max_image_size}",
+                "--SiftExtraction.max_num_features",
+                f"{self.max_num_features}",
                 "--SiftExtraction.domain_size_pooling",
                 f"{self.domain_size_pooling}",
                 "--ImageReader.camera_mask_path",
@@ -814,6 +830,8 @@ class COLMAPOpenMVSPipeline:
                 f"{self.pgo_smooth_multi}",
                 "--show_pgo_result",
                 f"{self.show_pgo_result}",
+                "--show_clusters",
+                f"{self.show_clusters}"
             ]
         if self.fix_intrin:
             mapper_cmds += [
