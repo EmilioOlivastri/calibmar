@@ -63,12 +63,5 @@ int main(int argc, char** argv)
     }
 
 
-    /**
-    cv::Mat cv_dst_img = dst_img.Data();
-    cv::Range cr(roi[0], roi[2]);
-    cv::Range rr(roi[1], roi[3]);
-    cv::Mat cv_roi_img = cv_dst_img(rr, cr).clone();
-    /**/
-
     return 0;
 }

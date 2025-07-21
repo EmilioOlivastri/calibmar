@@ -91,54 +91,19 @@ namespace calibmar {
       parameters->adaptiveThreshWinSizeStep = 1;
     }
 
-    /**/
+
     cv::Mat gray;
     cv::cvtColor(image_data, gray, cv::COLOR_BGR2GRAY);
     Eigen::MatrixXd outImagePoints;
     std::vector<bool> outCornerObserved;
     std::vector<AprilTags::TagDetection> detections;
     bool success_kalibr = detect(gray, outImagePoints, outCornerObserved, detections); 
-
     
     // store aruco keypoints in the image
     image.SetPoints2D({});
     image.ClearCorrespondences();
     std::map<int, std::vector<Eigen::Vector2d>> aruco_keypoints;
 
-    /** ORIGINAL CODE **
-    cv::Ptr<cv::aruco::Dictionary> dictionary =
-        cv::makePtr<cv::aruco::Dictionary>(cv::aruco::getPredefinedDictionary(static_cast<int>(options_.aruco_type)));
-    cv::aruco::detectMarkers(image_data, dictionary, marker_corners, marker_ids, parameters, rejected_candidates);
-
-    if (marker_corners.size() == 0) {
-      return Status::DETECTION_ERROR;
-    }
-    
-    std::map<int, size_t> id_to_idx;
-    for (size_t i = 0; i < marker_ids.size(); i++) {
-      // sort the points accoring to marker id, to keep stable detection for livestream
-      id_to_idx[marker_ids[i]] = i;
-    }
-    
-    for (const auto& marker_id_idx : id_to_idx) {
-      std::vector<Eigen::Vector2d> corners;
-      size_t i = marker_id_idx.second;
-      corners.reserve(marker_corners[i].size());
-      std::cout << "Tag Id: " << marker_ids[i] << std::endl;
-      for (size_t j = 0; j < marker_corners[i].size(); j++) {
-        // for apriltag the opencv detector sets the origin to the bottom right,
-        // which is inconsistent with Aruco, so shift them to match top left origin
-        size_t j2 = is_apriltag ? (j + 2) % 4 : j;  // 2, 3, 0, 1 : 0, 1, 2, 3
-        const auto& corner = marker_corners[i][j2];
-        Eigen::Vector2d point2D(corner.x, corner.y);
-        corners.push_back(point2D);
-        size_t idx = image.AddPoint2D(point2D);
-        image.SetPoint3DforPoint2D(MapCornerToPointId(marker_ids[i], j), idx);
-      }
-      aruco_keypoints.emplace(marker_ids[i], corners);
-    }
-
-    /**/
     if ( !success_kalibr ) return Status::DETECTION_ERROR;
     
     int _cols = extractor_->cols();
@@ -158,9 +123,8 @@ namespace calibmar {
       if (skip) continue;
 
       // add four points per tag
-      std::vector<Eigen::Vector2d> corners, corners_raw;
+      std::vector<Eigen::Vector2d> corners;
       corners.reserve(4);
-      corners_raw.reserve(4);
       int index_mapping[] = {3, 2, 1, 0};
       for (int j = 0; j < 4; j++) 
       {
@@ -176,7 +140,9 @@ namespace calibmar {
       aruco_keypoints.emplace(tagId, corners);
     }
 
-
+    if (aruco_keypoints.size() < extractor_->getOptions().minTagsForValidObs)
+      return Status::DETECTION_ERROR;
+  
     image.SetArucoKeypoints(aruco_keypoints);
 
     return Status::SUCCESS;
@@ -233,14 +199,8 @@ namespace calibmar {
     }
 
     //did we find enough tags?
-    if (detections.size() < options.minTagsForValidObs) {
-      success = false;
-
-      //immediate exit if we dont need to show video for debugging...
-      //if video is shown, exit after drawing video...
-      if (!options.showExtractionVideo)
-      return success;
-    }
+    if (detections.size() < options.minTagsForValidObs)
+      return false;
 
     //sort detections by tagId
     std::sort(detections.begin(), detections.end(),
@@ -362,9 +322,7 @@ namespace calibmar {
 
     outCornerObserved.resize(extractor_->size(), false);
     outImagePoints.resize(extractor_->size(), 2);
-
     int _cols = extractor_->cols();
-
     for (unsigned int i = 0; i < detections.size(); i++) {
       // get the tag id
       unsigned int tagId = detections[i].id;
@@ -394,11 +352,7 @@ namespace calibmar {
         outImagePoints.row(pIdx[j]) = Eigen::Matrix<double, 1, 2>(corner_x,
                                   corner_y);
 
-        if (subpix_displacement_squarred <= options.maxSubpixDisplacement2) {
-          outCornerObserved[pIdx[j]] = true;
-        } else {
-          outCornerObserved[pIdx[j]] = false;
-        }
+        outCornerObserved[pIdx[j]] = subpix_displacement_squarred <= options.maxSubpixDisplacement2; 
       }
     }
 

@@ -186,6 +186,7 @@ namespace calibmar {
           last_pixmap_ = std::make_unique<Pixmap>(pixmap->Clone());
           data->image = std::move(pixmap);
           data->status = ExtractionImageWidget::ConvertStatus(extractor_status);
+
         }
         else {
           data->status = ExtractionImageWidget::ConvertStatus(reader_status);
@@ -202,7 +203,6 @@ namespace calibmar {
           });
         }
       }
-
       QMetaObject::invokeMethod(calibration_widget_,
                                 [calibration_widget = calibration_widget_]() { calibration_widget->StartCalibration(); });
 
