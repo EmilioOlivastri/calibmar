@@ -1,7 +1,12 @@
 #pragma once
 
+#include "calibmar/apriltags/TagFamily.h"
+
 #include "calibmar/core/calibration_targets.h"
+#include "calibmar/kalibr_extractors/GridCalibrationTargetAprilgrid.hpp"
 #include "extractor.h"
+
+#include <boost/shared_ptr.hpp>
 
 #include <opencv2/aruco.hpp>
 
@@ -46,6 +51,14 @@ namespace calibmar {
 
    private:
     Options options_;
+    
+
+    AprilTags::TagCodes getTagCodes(const ArucoMarkerTypes& type);
+    bool detect(const cv::Mat & image, Eigen::MatrixXd & outImagePoints,
+                std::vector<bool> &outCornerObserved, 
+                std::vector<AprilTags::TagDetection>& detections);
+
+    std::shared_ptr<kalibr_extractors::GridCalibrationTargetAprilgrid> extractor_;
 
     std::map<uint32_t, Eigen::Vector3d> points3D_;
     cv::Ptr<cv::aruco::GridBoard> board_;

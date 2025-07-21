@@ -1,0 +1,11 @@
+model: OPENCV_FISHEYE
+# fx, fy, cx, cy, k1, k2, k3, k4
+parameters: [2641.404135, 2644.628977, 1990.530781, 1055.024804, 0.05608049163, 0.07435086083, -0.001746305011, 0.01681019584]
+non_svp_model: FLATPORT
+# Nx, Ny, Nz, int_dist, int_thick, na, ng, nw (Note that [Nx, Ny, Nz] must be unit vector)
+non_svp_parameters: [-0.004348434312, -0.00752015894, 0.9999622685, 0.03480104832, 0.008, 1, 1.48899, 1.334]
+# non_svp_est_std_dev: 0.0002753845735, 0.0002450684841, 2.170503842e-06, 0.0004740286295, 0, 0, 0, 0
+width: 3840
+height: 2160
+# overall_rms: 2.61747377
+# target: aruco grid board, APRILTAG_36h11, 6, 6, 0.088000, 0.300000, 2, bl, hor

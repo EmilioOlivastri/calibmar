@@ -1,0 +1,15 @@
+target_type: 'aprilgrid'     # gridtype
+tagCols: 6                   # number of apriltags
+tagRows: 6                   # number of apriltags
+tagSize: 0.055               # size of apriltag, edge to edge [m]
+tagSpacing: 0.3              # ratio of space between tags to tagSize
+codeOffset: 0                # code offset for the first tag in the aprilboard
+
+
+# Calibmar required extra params
+tagFamily: 36h11             # Family of the generated codes
+bits: 2                      # Numbers of bits (default in kalibr)
+gridOrigin: 'Bottom Left'      # Origin of the pattern
+gridDirection: 'Horizontal'  # Direction of increasing ids 
+tagSpace: 0.0165             # Space between tags [m]
+

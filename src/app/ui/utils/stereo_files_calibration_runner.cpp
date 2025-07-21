@@ -11,6 +11,40 @@
 #include <colmap/scene/reconstruction.h>
 
 namespace {
+
+  void SetupPlanarCalibration(
+    std::variant<calibmar::ChessboardFeatureExtractor::Options, calibmar::ArucoBoardFeatureExtractor::Options>& target_options,
+    const calibmar::StereoFileCalibrationDialog::Options& options, calibmar::Calibration& calibration, std::pair<int, int> image_size,
+    std::unique_ptr<calibmar::FeatureExtractor>& extractor, 
+    std::unique_ptr<calibmar::TargetVisualizer>& target_visualizer) {
+    using namespace calibmar;
+
+    ChessboardFeatureExtractor::Options* chessboard_options =
+        std::get_if<calibmar::ChessboardFeatureExtractor::Options>(&target_options);
+
+    if (chessboard_options) {
+      chessboard_options->fast = false;
+      std::unique_ptr<ChessboardFeatureExtractor> chessboard_extractor =
+          std::make_unique<ChessboardFeatureExtractor>(*chessboard_options);
+      calibration.SetCalibrationTargetInfo(report::GenerateCalibrationTargetInfo(*chessboard_options));
+      calibration.SetPoints3D(chessboard_extractor->Points3D());
+      extractor = std::move(chessboard_extractor);
+      target_visualizer = std::make_unique<ChessboardTargetVisualizer>(chessboard_options->chessboard_columns,
+                                                                      chessboard_options->chessboard_rows);
+    }
+    else {
+      ArucoBoardFeatureExtractor::Options& aruco_options = std::get<ArucoBoardFeatureExtractor::Options>(target_options);
+      std::unique_ptr<ArucoBoardFeatureExtractor> aurco_extractor = std::make_unique<ArucoBoardFeatureExtractor>(aruco_options);
+      calibration.SetPoints3D(aurco_extractor->Points3D());
+      calibration.SetCalibrationTargetInfo(report::GenerateCalibrationTargetInfo(aruco_options));
+      extractor = std::move(aurco_extractor);
+      target_visualizer = std::make_unique<ArucoBoardTargetVisualizer>();
+    }
+
+
+  }
+
+
   std::unique_ptr<calibmar::ExtractionImageWidget::Data> ReadAndExtractImage(calibmar::ImageReader& reader,
                                                                              calibmar::FeatureExtractor& extractor,
                                                                              calibmar::Image& image) {
@@ -51,6 +85,23 @@ namespace calibmar {
     FilesystemImageReader reader2(reader_options2);
     std::pair<int, int> image_size{reader1.ImagesWidth(), reader1.ImagesHeight()};
 
+
+    /* EMILIO'S CODE*/
+    std::unique_ptr<FeatureExtractor> extractor;
+    std::unique_ptr<TargetVisualizer> target_visualizer;
+    std::variant<calibmar::ChessboardFeatureExtractor::Options, calibmar::ArucoBoardFeatureExtractor::Options> target_options;
+    if (std::holds_alternative<ChessboardFeatureExtractor::Options>(options_.calibration_target_options)) {
+      target_options = std::get<ChessboardFeatureExtractor::Options>(options_.calibration_target_options);
+    }
+    else {
+      target_options = std::get<ArucoBoardFeatureExtractor::Options>(options_.calibration_target_options);
+    }
+    SetupPlanarCalibration(target_options, options_, calibration1, image_size, extractor, target_visualizer);
+    SetupPlanarCalibration(target_options, options_, calibration2, image_size, extractor, target_visualizer);
+    /* EMILIO'S CODE*/
+
+
+    /* ORIGINAL CODE *
     ChessboardFeatureExtractor::Options extractor_options;
     extractor_options.chessboard_columns = options_.calibration_target_options.chessboard_columns;
     extractor_options.chessboard_rows = options_.calibration_target_options.chessboard_rows;
@@ -60,6 +111,7 @@ namespace calibmar {
     calibration1.SetCalibrationTargetInfo(report::GenerateCalibrationTargetInfo(options_.calibration_target_options));
     calibration2.SetPoints3D(extractor.Points3D());
     calibration2.SetCalibrationTargetInfo(report::GenerateCalibrationTargetInfo(options_.calibration_target_options));
+    /*-------------*/
 
     StereoCalibrator::Options calibrator_options;
     calibrator_options.estimate_pose_only = options_.estimate_pose_only;
@@ -79,18 +131,76 @@ namespace calibmar {
     calibration2.SetCamera(camera2);
 
     StereoCalibrator calibrator(calibrator_options);
+    /* ORIGINAL CODE *
     std::unique_ptr<TargetVisualizer> target_visualizer = std::make_unique<ChessboardTargetVisualizer>(
         options_.calibration_target_options.chessboard_columns, options_.calibration_target_options.chessboard_rows);
+    /**/
 
     calibration_widget_->SetTargetVisualizer(std::move(target_visualizer));
 
     try {
       while (reader1.HasNext() && reader2.HasNext()) {
         Image image1, image2;
-        std::unique_ptr<calibmar::ExtractionImageWidget::Data> data1 = ReadAndExtractImage(reader1, extractor, image1);
-        std::unique_ptr<calibmar::ExtractionImageWidget::Data> data2 = ReadAndExtractImage(reader2, extractor, image2);
+        std::unique_ptr<calibmar::ExtractionImageWidget::Data> data1 = ReadAndExtractImage(reader1, *extractor, image1);
+        std::unique_ptr<calibmar::ExtractionImageWidget::Data> data2 = ReadAndExtractImage(reader2, *extractor, image2);
 
         if (data1->status == ExtractionImageWidget::Status::SUCCESS && data2->status == ExtractionImageWidget::Status::SUCCESS) {
+          
+          /* EMILIO'S ADAPTATION CODE FOR ARUCO BOARDS*/
+          bool correct_corr = true;
+          if ( std::holds_alternative<ArucoBoardFeatureExtractor::Options>(options_.calibration_target_options)) {
+            
+            std::unordered_map<size_t, uint32_t> corr1 = image1.Correspondences();
+            std::unordered_map<size_t, uint32_t> corr2 = image2.Correspondences();
+
+            for (auto it_x = corr1.begin(); it_x != corr1.end() && correct_corr; ++it_x) {
+              size_t point2D_idx = it_x->first;
+              uint32_t point3D_idx = it_x->second;
+
+              if (point2D_idx != point3D_idx)
+              {
+                std::cout << "Tuple: [" << point2D_idx << " | " << point3D_idx << "]" << std::endl;
+                correct_corr = false;
+                continue;
+              }
+
+              const auto& it_y = corr2.find(point2D_idx);
+              if (it_y == corr2.end()) 
+              {
+                correct_corr = false;
+                continue;
+              }
+
+              size_t point2D_idy = it_y->first;
+              correct_corr &= point3D_idx == corr2[point2D_idy];
+              correct_corr &= point2D_idy == point2D_idx;
+              
+              if (!correct_corr)
+              {
+                std::cout << "Image 1: " << image1.Name() << " Image 2: " << image2.Name() << std::endl;
+                std::cout << "Details of correspondences: " << std::endl;
+                std::cout << "point2D_idx: " << point2D_idx << std::endl;
+                std::cout << "point3D_idx: " << point3D_idx << std::endl;
+                std::cout << "point2D_idy: " << point2D_idy << std::endl;
+                std::cout << "point3D_idy: " << corr2[point2D_idy] << std::endl;
+                std::cout << "Coordinates of point2D_idx: " << image1.Point2D(point2D_idx).transpose() << std::endl;
+                std::cout << "Coordinates of point3D_idx: " << calibration1.Point3D(point3D_idx).transpose() << std::endl;
+                std::cout << "Coordinates of point2D_idx_2: " << image2.Point2D(point2D_idy).transpose() << std::endl;
+                std::cout << "Coordinates of point3D_idx_2: " << calibration2.Point3D(corr2[point2D_idy]).transpose() << std::endl;
+                std::cout << "-------------------------" << std::endl;
+              }
+            }
+          }
+          /* EMILIO'S ADAPTATION CODE FOR ARUCO BOARDS*/
+
+
+          if (!correct_corr)
+          {
+            std::cout << "Image 1: " << image1.Name() << " Image 2: " << image2.Name() << std::endl;
+            std::cout << "Correspondences are not correct. Skipping images." << std::endl;
+            continue;
+          }
+
           size_t id = calibration1.AddImage(image1);
           data1->image_data = calibration1.Image(id);
           id = calibration2.AddImage(image2);

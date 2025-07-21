@@ -7,6 +7,9 @@ add_subdirectory(extractors)
 add_subdirectory(pose_suggestion)
 add_subdirectory(readers)
 
+add_subdirectory(kalibr_extractors)
+add_subdirectory(apriltags)
+
 target_link_libraries(calibmar PUBLIC colmap ${OpenCV_LIBS})
 target_include_directories(calibmar PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. ${OpenCV_INCLUDE_DIRS})
 target_compile_features(calibmar PUBLIC cxx_std_17)

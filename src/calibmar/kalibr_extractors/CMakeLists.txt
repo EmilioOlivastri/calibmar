@@ -1,0 +1,9 @@
+target_sources(calibmar PRIVATE
+	GridCalibrationTargetAprilgrid.cpp
+	GridCalibrationTargetAprilgrid.hpp
+	GridCalibrationTargetBase.cpp
+	GridCalibrationTargetBase.hpp
+	GridCalibrationTargetCheckerboard.cpp
+	GridCalibrationTargetCheckerboard.hpp
+	GridCalibrationTargetCirclegrid.cpp
+	GridCalibrationTargetCirclegrid.hpp)

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+set(Qt5_DIR "/usr/lib/qt5/5.15.2/gcc_64/lib/cmake/Qt5")
+message(STATUS "The value of Qt5_DIR is ${Qt5_DIR}")
 
 option(CALIBMAR_TESTS_ENABLED "Whether to build test binaries" ON)
 
@@ -14,9 +16,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()        
 
 # Install application menu entry under Linux.
-if(UNIX AND NOT APPLE)
-    install(FILES "cmake/calibmar.desktop" DESTINATION "share/applications")
-endif()
+  install(FILES "cmake/calibmar.desktop" DESTINATION "share/applications")
 
 add_subdirectory(lib)
 add_subdirectory(src/app)

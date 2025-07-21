@@ -81,12 +81,22 @@ namespace calibmar {
     camera_model_layout->addWidget(initial_parameters_2_, 2, 1);
     camera_model_layout->addWidget(only_estimate_pose_checkbox_, 3, 0, 1, 2);
 
+    /* EMILIO'S CODE */
+    QGroupBox* calib_target_groupbox = new QGroupBox("Calibration target");
+    QVBoxLayout* calib_target_layout = new QVBoxLayout(calib_target_groupbox);
+    calibration_target_options_ = new CalibrationTargetOptionsWidget(calib_target_groupbox);
+    calib_target_layout->addWidget(calibration_target_options_);
+    calib_target_layout->setContentsMargins(0, 0, 0, 0);
+    /* EMILIO'S CODE */
+    
+    /* ORIGINAL *
     // chessboard target
     QGroupBox* chessboard_groupbox = new QGroupBox("Chessboard target");
     QVBoxLayout* chessboard_layout = new QVBoxLayout(chessboard_groupbox);
     calibration_target_options_ = new ChessboardTargetOptionsWidget(chessboard_groupbox);
     chessboard_layout->addWidget(calibration_target_options_);
     chessboard_layout->setContentsMargins(0, 0, 0, 0);
+    /**/
 
     // import button
     QHBoxLayout* horizontalLayout_run = new QHBoxLayout();
@@ -111,7 +121,8 @@ namespace calibmar {
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(directory_groupbox);
     layout->addWidget(camera_model_groupbox);
-    layout->addWidget(chessboard_groupbox);
+    //layout->addWidget(chessboard_groupbox);
+    layout->addWidget(calib_target_groupbox);
     layout->addLayout(horizontalLayout_run);
     setWindowTitle("Stereo Calibrate from Files");
 
@@ -136,7 +147,9 @@ namespace calibmar {
       use_initial_parameters_checkbox_->setChecked(false);
     }
 
-    calibration_target_options_->SetChessBoardTargetOptions(options.calibration_target_options);
+    calibration_target_options_->SetCalibrationTargetOptions(options.calibration_target_options);
+  
+    //calibration_target_options_->SetChessBoardTargetOptions(options.calibration_target_options);
   }
 
   StereoFileCalibrationDialog::Options StereoFileCalibrationDialog::GetOptions() {
@@ -156,7 +169,8 @@ namespace calibmar {
 
     options.images_directory1 = directory_edit1_->text().toStdString();
     options.images_directory2 = directory_edit2_->text().toStdString();
-    options.calibration_target_options = calibration_target_options_->ChessboardTargetOptions();
+    //options.calibration_target_options = calibration_target_options_->ChessboardTargetOptions();
+    options.calibration_target_options = calibration_target_options_->CalibrationTargetOptions();
     return options;
   }
 
@@ -197,9 +211,37 @@ namespace calibmar {
     ImportedParameters parameters = ImportedParameters::ImportFromYaml(path);
     Options options;
 
+    /* EMILIO'S CODE */
+    ImportedParameters& p = parameters;
+    switch (p.calibration_target) {
+      case CalibrationTargetType::Chessboard:
+        options.calibration_target_options = ChessboardFeatureExtractor::Options{p.rows, p.columns, p.square_size};
+        break;
+      case CalibrationTargetType::Target3D:
+        options.calibration_target_options = SiftFeatureExtractor::Options{};
+        break;
+      case CalibrationTargetType::Target3DAruco:
+        options.calibration_target_options = ArucoSiftFeatureExtractor::Options{p.aruco_type, p.aruco_scale_factor, false};
+        break;
+      case CalibrationTargetType::ArucoGridBoard:
+        options.calibration_target_options = ArucoBoardFeatureExtractor::Options{p.aruco_type,
+                                                                                 ArucoGridOrigin::TopLeft,
+                                                                                 ArucoGridDirection::Horizontal,
+                                                                                 p.columns,
+                                                                                 p.rows,
+                                                                                 p.square_size,
+                                                                                 p.spacing,
+                                                                                 1};
+        break;
+    }
+
+    /* EMILIO'S CODE */
+
+    /*  ORIGINAL CODE *
     options.calibration_target_options.chessboard_columns = parameters.columns;
     options.calibration_target_options.chessboard_rows = parameters.rows;
     options.calibration_target_options.square_size = parameters.square_size;
+    /* ------------ */
 
     options.images_directory1 = parameters.directory;
     options.images_directory2 = parameters.directory;

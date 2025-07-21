@@ -1,0 +1,12 @@
+#FAKE CALIBRATION FILE
+model: OPENCV_FISHEYE
+# fx, fy, cx, cy, k1, k2, k3, k4
+parameters: [871.9922428766354, 880.4439189960146, 975.9429581055173, 560.1836937542583, 0.042021615691990366, 0.028356239154592244, -0.019302300616417536, 0.005362869045634096]
+non_svp_model: FLATPORT
+# Nx, Ny, Nz, int_dist, int_thick, na, ng, nw (Note that [Nx, Ny, Nz] must be unit vector)
+non_svp_parameters: [0.0, 0.0, 1.0, 0.0005, 0.002, 1, 1.48899, 1.334]
+# non_svp_est_std_dev: 0.0006131744942, 0.0006034898306, 1.591296846e-05, 0.001046181334, 0, 0, 0, 0
+width: 1920
+height: 1080
+# overall_rms: 4.385129271
+# target: aruco grid board, APRILTAG_36h11, 6, 6, 0.088000, 0.300000, 2, bl, hor
