@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <filesystem>
 
+
 namespace calibmar {
 
   FilesystemImageReader::FilesystemImageReader(const Options& options)
@@ -26,6 +27,7 @@ namespace calibmar {
     }
 
     std::sort(image_paths_.begin(), image_paths_.end(), natural_sort::compare<std::string>);
+    
   }
 
   bool FilesystemImageReader::HasNext() {

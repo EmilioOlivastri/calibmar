@@ -146,34 +146,31 @@ namespace calibmar {
 
         if (data1->status == ExtractionImageWidget::Status::SUCCESS && data2->status == ExtractionImageWidget::Status::SUCCESS) {
           
-          /* EMILIO'S ADAPTATION CODE FOR ARUCO BOARDS*/
+          /* EMILIO'S ADAPTATION CODE FOR ARUCO BOARDS*
           bool correct_corr = true;
           if ( std::holds_alternative<ArucoBoardFeatureExtractor::Options>(options_.calibration_target_options)) {
             
-            std::unordered_map<size_t, uint32_t> corr1 = image1.Correspondences();
-            std::unordered_map<size_t, uint32_t> corr2 = image2.Correspondences();
+            //std::unordered_map<size_t, uint32_t> corr1 = image1.Correspondences();
+            //std::unordered_map<size_t, uint32_t> corr2 = image2.Correspondences();
+
+            std::unordered_map<uint32_t, size_t> corr1 = image1.ReverseCorrespondences();
+            std::unordered_map<uint32_t, size_t> corr2 = image2.ReverseCorrespondences();
 
             for (auto it_x = corr1.begin(); it_x != corr1.end() && correct_corr; ++it_x) {
-              size_t point2D_idx = it_x->first;
-              uint32_t point3D_idx = it_x->second;
 
-              if (point2D_idx != point3D_idx)
-              {
-                std::cout << "Tuple: [" << point2D_idx << " | " << point3D_idx << "]" << std::endl;
-                correct_corr = false;
-                continue;
-              }
+              uint32_t point3D_idx = it_x->first;
+              size_t point2D_idx = it_x->second;
+              const auto& it_y = corr2.find(point3D_idx);
 
-              const auto& it_y = corr2.find(point2D_idx);
               if (it_y == corr2.end()) 
               {
                 correct_corr = false;
                 continue;
               }
 
-              size_t point2D_idy = it_y->first;
-              correct_corr &= point3D_idx == corr2[point2D_idy];
-              correct_corr &= point2D_idy == point2D_idx;
+              uint32_t point3D_idy = it_y->first;
+              size_t point2D_idy = it_y->second;
+              correct_corr &= point3D_idx == point3D_idy;
               
               if (!correct_corr)
               {
@@ -191,8 +188,6 @@ namespace calibmar {
               }
             }
           }
-          /* EMILIO'S ADAPTATION CODE FOR ARUCO BOARDS*/
-
 
           if (!correct_corr)
           {
@@ -200,6 +195,7 @@ namespace calibmar {
             std::cout << "Correspondences are not correct. Skipping images." << std::endl;
             continue;
           }
+          /* EMILIO'S ADAPTATION CODE FOR ARUCO BOARDS*/
 
           size_t id = calibration1.AddImage(image1);
           data1->image_data = calibration1.Image(id);

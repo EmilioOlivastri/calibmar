@@ -19,6 +19,8 @@ namespace calibmar {
     inline void SetPoint3DforPoint2D(const uint32_t point3D_id, const size_t point2D_idx);
     // Correspondences of image 2D point indices to calibration 3D point ids
     inline const std::unordered_map<size_t, uint32_t>& Correspondences() const;
+    // Reverse correspondences of calibration 3D point ids to image 2D point indices
+    inline const std::unordered_map<uint32_t, size_t>& ReverseCorrespondences() const;
     inline void ClearCorrespondences();
 
     // Pose which is defined as the transformation from world to camera space.
@@ -47,6 +49,7 @@ namespace calibmar {
     std::string name_;
     std::vector<Eigen::Vector2d> points2D_;
     std::unordered_map<size_t, uint32_t> correspondences_;
+    std::unordered_map<uint32_t, size_t> reverse_correspondences_;
     colmap::Rigid3d pose_;
   };
 
@@ -73,14 +76,20 @@ namespace calibmar {
 
   inline void Image::SetPoint3DforPoint2D(const uint32_t point3D_id, const size_t point2D_idx) {
     correspondences_[point2D_idx] = point3D_id;
+    reverse_correspondences_[point3D_id] = point2D_idx;
   }
 
   inline const std::unordered_map<size_t, uint32_t>& Image::Correspondences() const {
     return correspondences_;
   }
 
+  inline const std::unordered_map<uint32_t, size_t>& Image::ReverseCorrespondences() const {
+    return reverse_correspondences_;
+  }
+
   inline void Image::ClearCorrespondences() {
     correspondences_.clear();
+    reverse_correspondences_.clear();
   }
 
   inline const std::string& Image::Name() const {

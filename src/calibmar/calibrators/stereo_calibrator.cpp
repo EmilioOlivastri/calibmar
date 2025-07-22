@@ -46,9 +46,7 @@ namespace calibmar {
 
     std::vector<std::vector<Eigen::Vector2d>> pointSets2D_1, pointSets2D_2;
     std::vector<std::vector<Eigen::Vector3d>> pointSets3D_1, pointSets3D_2;
-    calibration1.GetCorrespondences(pointSets2D_1, pointSets3D_1);
-    calibration2.GetCorrespondences(pointSets2D_2, pointSets3D_2);
-
+    
     /* EMILIO'S ADAPTATION CODE FOR ARUCO BOARDS*/
     std::string full_calib_info = calibration1.GetCalibrationTargetInfo();
     std::string target_type = full_calib_info.substr(0, full_calib_info.find(","));
@@ -66,8 +64,8 @@ namespace calibmar {
       for (size_t im_id = 0; im_id < num_imgs; ++im_id) {
         const Image& image1 = calibration1.Images()[im_id];
         const Image& image2 = calibration2.Images()[im_id];
-        std::unordered_map<size_t, uint32_t> corr1 = image1.Correspondences();
-        std::unordered_map<size_t, uint32_t> corr2 = image2.Correspondences();
+        std::unordered_map<uint32_t, size_t> corr1 = image1.ReverseCorrespondences();
+        std::unordered_map<uint32_t, size_t> corr2 = image2.ReverseCorrespondences();
 
         int min_num_points = std::min(corr1.size(), corr2.size());
         pts2D_1_filt[im_id].reserve(min_num_points);
@@ -76,14 +74,15 @@ namespace calibmar {
         pts3D_2_filt[im_id].reserve(min_num_points);
         
         for (const auto& it_x : corr1) {
-          size_t point2D_idx = it_x.first;
-          uint32_t point3D_idx = it_x.second;
           
+          uint32_t point3D_idx = it_x.first;
+          size_t point2D_idx = it_x.second;
+          const auto& it_y = corr2.find(point3D_idx);
 
-          const auto& it_y = corr2.find(point2D_idx);
           if (it_y == corr2.end()) continue;
 
-          size_t point2D_idy = it_y->first;
+          uint32_t point3D_idy = it_y->first;
+          size_t point2D_idy = it_y->second;
           /**
           bool condition_printing = false;
           condition_printing |= point2D_idy != point2D_idx;
@@ -109,7 +108,7 @@ namespace calibmar {
           pts2D_1_filt[im_id].push_back(image1.Point2D(point2D_idx));
           pts3D_1_filt[im_id].push_back(calibration1.Point3D(point3D_idx));
           pts2D_2_filt[im_id].push_back(image2.Point2D(point2D_idy));
-          pts3D_2_filt[im_id].push_back(calibration2.Point3D(corr2[point2D_idy]));
+          pts3D_2_filt[im_id].push_back(calibration2.Point3D(point3D_idy));
 
 
         }
@@ -120,6 +119,11 @@ namespace calibmar {
       pointSets2D_2 = pts2D_2_filt;
       pointSets3D_1 = pts3D_1_filt;
       pointSets3D_2 = pts3D_2_filt;
+    }
+    else
+    {
+      calibration1.GetCorrespondences(pointSets2D_1, pointSets3D_1);
+      calibration2.GetCorrespondences(pointSets2D_2, pointSets3D_2);
     }
     /* EMILIO'S ADAPTATION CODE FOR ARUCO BOARDS*/
 
@@ -134,7 +138,6 @@ namespace calibmar {
     std_devs.std_deviations_intrinsics1 = &std_dev_camera1;
     std_devs.std_deviations_intrinsics2 = &std_dev_camera2;
     // extrinsics std devs are currently not used, because their interpretation is unclear
-
     stereo_calibration::CalibrateStereoCameras(pointSets3D_1, pointSets2D_1, pointSets2D_2, camera1, camera2,
                                                options_.use_intrinsics_guess, options_.estimate_pose_only, relative_pose, poses,
                                                &std_devs);
