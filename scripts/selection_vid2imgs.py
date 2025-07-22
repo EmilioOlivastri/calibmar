@@ -39,10 +39,6 @@ def main():
             os.remove(os.path.join(input_path, image_list[i]))
             print(f"Deleted {image_list[i]}")
         
-
-                
-                
-
     cv2.destroyAllWindows()
 
     return

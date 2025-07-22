@@ -27,10 +27,10 @@ bool fixColRoi(const cv::Mat& gray, int roi[4], int roi_id);
 
 int main(int argc, char** argv) 
 {
-    if (argc < 3) 
+    if (argc < 4) 
     {
-        std::cerr << "Usage: " << argv[0] << " <camera_parameters.yaml> <path 2 image> <distance>" << std::endl;
-        std::cerr << "Distance parameters is optional" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <camera_parameters.yaml> <path 2 image> <distance> <virtual distance>" << std::endl;
+        std::cerr << "Virtual distance parameters is used only for the flat port computations" << std::endl;
         return 1;
     }
 
