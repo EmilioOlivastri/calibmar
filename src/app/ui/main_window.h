@@ -7,6 +7,7 @@
 #include "ui/dialogs/stream_calibration_dialog.h"
 #include "ui/widgets/calibration_widget.h"
 #include "ui/widgets/livestream_extraction_widget.h"
+#include "ui/dialogs/undistortion_estimation_dialog.h"
 
 #include <QImage>
 #include <QLabel>
@@ -24,10 +25,13 @@ namespace calibmar {
     void NewStreamCalibration();
     void NewFilesCalibration();
     void NewStereoFilesCalibration();
+    void NewUndistortionEstimation();
     void SaveCalibration();
     void About();
     void CreateActions();
     void BeginNewCalibration();
+    void BeginNewUndistortionEstimation();
+    void EndNewUndistortionEstimation();
     void EndNewCalibration();
     void DisplayExtractionImage(const std::string& image_name, const TargetVisualizer& target_visualizer);
 
@@ -36,6 +40,7 @@ namespace calibmar {
     QAction* calibration_files_action_;
     QAction* calibration_stereo_files_action_;
     QAction* calibration_stream_action_;
+    QAction* undistortion_estimation_action_;
     QAction* calibration_save_action_;
     std::string last_directory_;
     std::unique_ptr<std::thread> worker_thread_;
@@ -43,10 +48,12 @@ namespace calibmar {
     // second calibration that only exists for a stereo calibration
     std::unique_ptr<Calibration> calibration_stereo_;
     std::atomic_bool calibration_success_;
+    std::atomic_bool undistortion_success_;
     bool scrolled_to_bottom_;
     // to persist dialog options between runs
     FileCalibrationDialog::Options file_calibration_options_;
     StreamCalibrationDialog::Options stream_calibration_options_;
     StereoFileCalibrationDialog::Options stereo_calibration_options_;
+    UndistortionEstimationDialog::Options undistortion_estimation_options_;
   };
 }

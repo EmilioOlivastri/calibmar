@@ -48,6 +48,10 @@ namespace {
 
 namespace calibmar {
 
+  ImageTargetVisualizer::ImageTargetVisualizer(int cols, int rows) : cols_(cols), rows_(rows) {}
+
+  void ImageTargetVisualizer::DrawTargetOnImage(Pixmap& image, const Image& image_data) const {}
+
   ChessboardTargetVisualizer::ChessboardTargetVisualizer(int cols, int rows) : cols_(cols), rows_(rows) {}
 
   void ChessboardTargetVisualizer::DrawTargetOnImage(Pixmap& image, const Image& image_data) const {

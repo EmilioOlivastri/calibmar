@@ -20,8 +20,12 @@
 #include "ui/utils/files_calibration_runner.h"
 #include "ui/utils/livestream_calibration_runner.h"
 #include "ui/utils/stereo_files_calibration_runner.h"
+#include "ui/utils/undistortion_estimation_runner.h"
 #include "ui/widgets/calibration_result_widget.h"
 #include "ui/widgets/zoomable_scroll_area.h"
+#include "ui/widgets/undistortion_estimation_options_widget.h"
+#include "ui/widgets/undistortion_estimation_widget.h"
+
 
 #include <QApplication>
 #include <QFileDialog>
@@ -45,7 +49,7 @@
 namespace calibmar {
 
   MainWindow::MainWindow(QWidget* parent)
-      : QMainWindow(parent), scroll_area_(new QScrollArea(this)), calibration_success_(false) {
+      : QMainWindow(parent), scroll_area_(new QScrollArea(this)), calibration_success_(false), undistortion_success_(false) {
     CreateActions();
 
     resize(QGuiApplication::primaryScreen()->availableSize() * 3 / 5);
@@ -252,6 +256,7 @@ namespace calibmar {
     //   dialog.exec();
     // });
     ////
+    undistortion_estimation_action_ = fileMenu->addAction("&Undistortion Estimation...", this, &MainWindow::NewUndistortionEstimation);
     fileMenu->addSeparator();
     calibration_save_action_ = fileMenu->addAction("&Save Calibration...", this, &MainWindow::SaveCalibration);
     calibration_save_action_->setEnabled(false);
@@ -293,10 +298,37 @@ namespace calibmar {
     calibration_files_action_->setEnabled(false);
     calibration_stereo_files_action_->setEnabled(false);
     calibration_stream_action_->setEnabled(false);
+    undistortion_estimation_action_->setEnabled(false);
     calibration_save_action_->setEnabled(false);
 
     calibration_.reset(new Calibration());
     calibration_stereo_.reset();
+  }
+
+  void MainWindow::NewUndistortionEstimation() {
+    UndistortionEstimationDialog dialog(this);
+    dialog.SetOptions(undistortion_estimation_options_);
+    dialog.exec();
+
+    if (dialog.result() != QDialog::DialogCode::Accepted) {
+      return;
+    }
+
+    BeginNewUndistortionEstimation();
+    undistortion_estimation_options_ = dialog.GetOptions();
+
+    UndistortionEstimationWidget* undistortion_widget = new UndistortionEstimationWidget(
+        this, std::bind(&MainWindow::DisplayExtractionImage, this, std::placeholders::_1, std::placeholders::_2));
+    main_layout_->addWidget(undistortion_widget);
+
+    std::unique_ptr<UndistortionEstimationRunner> runner =
+        std::make_unique<UndistortionEstimationRunner>(undistortion_widget, undistortion_estimation_options_);
+    worker_thread_.reset(new std::thread([this, runner = std::move(runner)]() {
+      undistortion_success_ = runner->Run();
+      QMetaObject::invokeMethod(this, [this]() {EndNewUndistortionEstimation();});
+    }));
+    
+    worker_thread_->detach();
   }
 
   // Called after a new calibration. Enables/Disables context menus.
@@ -304,6 +336,7 @@ namespace calibmar {
     calibration_files_action_->setEnabled(true);
     calibration_stereo_files_action_->setEnabled(true);
     calibration_stream_action_->setEnabled(true);
+    undistortion_estimation_action_->setEnabled(true);
     calibration_save_action_->setEnabled(calibration_success_);
   }
 
@@ -348,4 +381,32 @@ namespace calibmar {
     layout->addWidget(area);
     dialog.exec();
   }
+
+  void MainWindow::BeginNewUndistortionEstimation() {
+    int num_widgets = main_layout_->count();
+    for (int i = 0; i < num_widgets; i++) {
+      QWidget* widget = main_layout_->itemAt(0)->widget();
+      main_layout_->removeWidget(widget);
+      delete widget;
+    }
+    calibration_files_action_->setEnabled(false);
+    calibration_stereo_files_action_->setEnabled(false);
+    calibration_stream_action_->setEnabled(false);
+    undistortion_estimation_action_->setEnabled(false);
+    calibration_save_action_->setEnabled(false);
+
+    calibration_.reset();
+    calibration_stereo_.reset();
+  }
+
+  void MainWindow::EndNewUndistortionEstimation() {
+    calibration_files_action_->setEnabled(true);
+    calibration_stereo_files_action_->setEnabled(true);
+    calibration_stream_action_->setEnabled(true);
+    undistortion_estimation_action_->setEnabled(true);
+    calibration_save_action_->setEnabled(false);
+    std::cout << "COMPLETED" << std::endl;
+  }
+
+
 }

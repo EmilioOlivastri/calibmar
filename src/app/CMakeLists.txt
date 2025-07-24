@@ -23,6 +23,7 @@ target_link_libraries(calibmar_app PRIVATE
     Qt5::Core
     Qt5::Gui
     Qt5::Widgets
+    OpenMP::OpenMP_CXX
     ${OpenCV_LIBS}
 )
 

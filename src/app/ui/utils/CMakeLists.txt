@@ -20,5 +20,7 @@ target_sources(calibmar_app PRIVATE
 	parse_params.h
 	render.cpp
 	render.h
+	undistortion_estimation_runner.cpp
+	undistortion_estimation_runner.h
 	stereo_files_calibration_runner.cpp
 	stereo_files_calibration_runner.h)

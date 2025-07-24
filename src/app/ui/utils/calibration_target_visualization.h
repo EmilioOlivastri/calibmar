@@ -14,6 +14,17 @@ namespace calibmar {
     virtual void DrawTargetOnImage(Pixmap& image, const Image& image_data) const = 0;
   };
 
+  class ImageTargetVisualizer : public TargetVisualizer {
+   public:
+    ImageTargetVisualizer(int cols, int rows);
+
+    void DrawTargetOnImage(Pixmap& image, const Image& image_data) const override;
+
+   private:
+    int cols_;
+    int rows_;
+  };
+
   class ChessboardTargetVisualizer : public TargetVisualizer {
    public:
     ChessboardTargetVisualizer(int cols, int rows);
