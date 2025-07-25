@@ -1,4 +1,5 @@
 #include "undistortion_estimation_runner.h"
+#include "ui/widgets/undistortion_estimation_result_widget.h"
 #include "calibmar/core/undistort.h"
 
 #include <opencv2/imgproc.hpp>
@@ -100,7 +101,7 @@ namespace {
         undistortion_widget->SetProgress(100);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         double diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / 1000.0;
-        std::cout << "Mapping took: " << diff << std::endl;
+        //std::cout << "Mapping took: " << diff << std::endl;
         cv::remap(input.Data(), output.Data(), map, cv::noArray(), cv::INTER_LINEAR, cv::BorderTypes::BORDER_CONSTANT);
         
         return map;
@@ -234,9 +235,9 @@ namespace calibmar {
     colmap::Camera camera;
     std::optional<double> prj_dist, virtual_d0;
     SetupUndistortionEstimation(options_, image_size, camera, prj_dist, virtual_d0);
-
-    last_pixmap_ = std::make_unique<Pixmap>(dst_pixmap->Clone());
     
+    std::unique_ptr<Pixmap> original_pixmap = std::make_unique<Pixmap>(src_pixmap->Clone());
+
     std::unique_ptr<TargetVisualizer> target_visualizer = std::make_unique<ImageTargetVisualizer>(image_size.first, image_size.second);
     undistortion_widget_->SetTargetVisualizer(std::move(target_visualizer));
 
@@ -260,12 +261,13 @@ namespace calibmar {
     /* UNDISTORTION ESTIMATION  HERE */
     int roi[4];
     for (int i = 0; i < 4; roi[i++] = 0);
-    /**
+    /**/
     cv::Mat undist_map = UndistortPixmap(*src_pixmap, *dst_pixmap, 
                                          camera, prj_dist, virtual_d0, roi,
                                          undistortion_widget_);
+    /**
+    cv::Mat undist_map = cv::Mat::zeros(image_size.second, image_size.first, cv_src_img.type());
     /**/
-    cv::Mat undist_map = cv::Mat();
     roi[2] += 1; roi[3] += 1;
     
     cv::Mat cv_roi = cv::Mat(1, 4, CV_32S, roi);
@@ -276,7 +278,7 @@ namespace calibmar {
     cv::Mat gray_img = cv_dst_img.clone();
     if (gray_img.channels() > 1)
         cv::cvtColor(gray_img, gray_img, cv::COLOR_BGR2GRAY);
-    /**
+    /**/
     while(!fixColRoi(gray_img, roi, 0));
     while(!fixColRoi(gray_img, roi, 2));
     while(!fixRowRoi(gray_img, roi, 1));
@@ -294,6 +296,11 @@ namespace calibmar {
     fs << "Undistortion Map" << undist_map;
     fs.release(); 
     
+    // Save the undistorted image
+    std::unique_ptr<Pixmap> undistorted_pixmap = std::make_unique<Pixmap>(dst_pixmap->Clone());
+    //std::unique_ptr<Pixmap> undistorted_pixmap = std::make_unique<Pixmap>();
+    //undistorted_pixmap->Assign(cv_dst_img.clone());
+
     std::unique_ptr<ExtractionImageWidget::Data> data_output = std::make_unique<ExtractionImageWidget::Data>();
     data_output->image_name = options_.image_path;
     data_output->image_data = src_image_data;
@@ -301,8 +308,12 @@ namespace calibmar {
     data_output->status = ExtractionImageWidget::ConvertStatus(ImageReader::Status::SUCCESS);
 
     QMetaObject::invokeMethod(undistortion_widget_,
-                              [undistortion_widget = undistortion_widget_, last_pixmap = std::move(last_pixmap_), data = std::move(data_output)]() mutable {
-                               undistortion_widget->EndUndistortionEstimation(new ExtractionImageWidget(std::move(data), undistortion_widget->TargetVisualizer()));
+                              [undistortion_widget = undistortion_widget_, 
+                               original_pixmap = std::move(original_pixmap),
+                               undistorted_pixmap = std::move(undistorted_pixmap),
+                               camera = camera,
+                               distances = std::make_pair(prj_dist.value_or(0.0), virtual_d0.value_or(0.0))]() mutable {
+                               undistortion_widget->EndUndistortionEstimation(new UndistortionEstimationResultWidget(camera, std::move(original_pixmap), std::move(undistorted_pixmap), distances));
                               });
     
 

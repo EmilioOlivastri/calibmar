@@ -43,6 +43,8 @@ target_sources(calibmar_app PRIVATE
 	timer_bar_widget.h
 	undistortion_estimation_options_widget.cpp
 	undistortion_estimation_options_widget.h
+	undistortion_estimation_result_widget.cpp
+	undistortion_estimation_result_widget.h
 	undistortion_estimation_widget.cpp
 	undistortion_estimation_widget.h
 	zoomable_scroll_area.cpp

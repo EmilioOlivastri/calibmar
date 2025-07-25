@@ -69,14 +69,15 @@ td {
     stream << "\n</tbody>\n</table>\n";
   }
 
-  void GenerateResultHtml(std::ostream& stream, const calibmar::Calibration& calibration) {
-    const colmap::Camera& camera = calibration.Camera();
+  void GenerateResultHtml(std::ostream& stream, const colmap::Camera& camera, 
+                          const std::pair<double, double>& distances) {
+    // Title
+    stream << "<h2>Undistortion Estimation Summary</h2>" << std::endl;
+    
     // camera model
-    std::string header = camera.IsCameraRefractive() ? "<h3>Camera &amp; Housing Model:</h3>" : "<h3>Camera Model:</h3>";
+    std::string header = "<h3>Camera &amp; Housing Model:</h3>";
     stream << header << std::endl << "<p>" << camera.ModelName();
-    if (camera.IsCameraRefractive()) {
-      stream << " " << camera.RefracModelName();
-    }
+    stream << " " << camera.RefracModelName();
     stream << "</p>" << std::endl << std::endl;
     // width & height
     stream << "<h3>Width &amp; Height:</h3>" << std::endl;
@@ -86,27 +87,12 @@ td {
     stream << "<h3>Camera Matrix:</h3>" << std::endl
            << camera.CalibrationMatrix().format(htmlTableFormat) << std::endl
            << std::endl;
-    // parameter lables
-    std::vector<std::string> param_names = Split(camera.ParamsInfo(), ", ");
-    FormatTableRows(stream, {"Parameters", "Values", "Est. Std. Deviations:"}, param_names, camera.params,
-                    calibration.IntrinsicsStdDeviations());
-
-    // optional refractive
-    if (camera.IsCameraRefractive()) {
-      std::vector<std::string> housing_param_names = Split(camera.RefracParamsInfo(), ", ");
-      FormatTableRows(stream, {"Housing Parameters", "Values", "Est. Std. Deviations:"},
-                      Split(Split(camera.RefracParamsInfo(), "\n")[0], ", "), camera.refrac_params,
-                      calibration.HousingParamsStdDeviations());
-    }
-    // optional stereo pose
-    if (calibration.CameraToWorldStereo().has_value()) {
-      const colmap::Rigid3d& cam_to_world = calibration.CameraToWorldStereo().value();
-      stream << std::endl << "<h3>Stereo Pose (camera to world R|t):</h3>" << std::endl;
-      stream << cam_to_world.ToMatrix().format(htmlTableFormat) << std::endl;
-      stream << "<p>(Distance to origin: " << cam_to_world.translation.norm() << ")</p>" << std::endl;
-    }
-    // overall rms
-    stream << std::endl << "<h3>Overall RMS:</h3>\n<p>" << calibration.CalibrationRms() << "</p>\n";
+    
+    // Undistortion parameters
+    stream << "<h3>Projection Distance &amp; Virtual D0:</h3>" << std::endl;
+    stream << "<p>" << distances.first << " " << distances.second << "</p>";
+    stream << std::endl << std::endl;
+    
   }
 
   void GeneratePerViewHtml(std::ostream& stream, const calibmar::Calibration& calibration) {
@@ -152,14 +138,19 @@ td {
 }
 
 namespace calibmar {
-  UndistortionEstimationResultWidget::UndistortionEstimationResultWidget(Calibration& calibration, std::unique_ptr<Pixmap> offset_visu_pixmap,
-                                                   std::shared_ptr<colmap::Reconstruction> reconstruction, QWidget* parent)
-      : QWidget(parent), offset_visu_pixmap_(std::move(offset_visu_pixmap)) {
+  UndistortionEstimationResultWidget::UndistortionEstimationResultWidget(colmap::Camera& camera,
+                                                                         std::unique_ptr<Pixmap> original_image, 
+                                                                         std::unique_ptr<Pixmap> undistorted_image,
+                                                                         std::pair<double, double> distances,
+                                                                         QWidget* parent) : QWidget(parent), 
+                                                                                            original_image_(std::move(original_image)), 
+                                                                                            undistorted_image_(std::move(undistorted_image)) 
+  {
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     // Result report
     std::stringstream result_stream;
-    GenerateResultHtml(result_stream, calibration);
+    GenerateResultHtml(result_stream, camera, distances);
     QTextDocument* doc = new QTextDocument(this);
     doc->setDefaultStyleSheet(QString::fromStdString(cssStyle));
     QString text = QString::fromStdString(result_stream.str());
@@ -173,35 +164,58 @@ namespace calibmar {
 
     int target_height = 500;
 
-    
-    ZoomableScrollArea* heatmap_area = new ZoomableScrollArea(this);
-    heatmap_area->setFrameShape(QFrame::Shape::NoFrame);
-    ImageWidget* image = new ImageWidget(this);
-    heatmap_area->setWidget(image);
-    heatmap_area->widget()->resize(QSize(calibration.Camera().width, calibration.Camera().height)
-                                       .scaled(calibration.Camera().width, target_height, Qt::AspectRatioMode::KeepAspectRatio));
-    std::unique_ptr<Pixmap> heatmap = std::make_unique<Pixmap>();
-    heatmap::GenerateHeatmap(calibration.Images(), {calibration.Camera().width, calibration.Camera().height}, *heatmap);
-    image->SetImage(std::move(heatmap));
-    CollapsibleWidget* heatmap_collapse = new CollapsibleWidget("Heatmap", nullptr, this);
-    heatmap_collapse->SetWidget(heatmap_area, target_height);
-    layout->addWidget(heatmap_collapse);
+    cv::Mat cv_undistorted_image = undistorted_image_->Data().clone();
+    cv::Mat cv_original_image = original_image_->Data().clone();
 
-    // only show offset diagramm with dome port
-    if (calibration.Camera().refrac_model_id == colmap::DomePort::refrac_model_id && offset_visu_pixmap_) {
-      std::vector<double>& params = calibration.Camera().refrac_params;
-      OffsetDiagramWidget* offset_widget = new OffsetDiagramWidget(
-          Eigen::Vector3d(params[0], params[1], params[2]), calibration.Camera().CalibrationMatrix(), *offset_visu_pixmap_, this);
-
-      ZoomableScrollArea* area = new ZoomableScrollArea(this);
-      area->setWidget(offset_widget);
-      area->widget()->resize(offset_visu_pixmap_->Width() * (800.0 / offset_visu_pixmap_->Height()), 800);
-      QTimer::singleShot(50, area, [area]() { area->verticalScrollBar()->setValue(area->verticalScrollBar()->maximum()); });
-      CollapsibleWidget* displacement_collapse = new CollapsibleWidget("Show Displacement", nullptr, this);
-      displacement_collapse->SetWidget(area, 500);
-
-      layout->addWidget(displacement_collapse);
+    if (cv_original_image.channels() > 1)
+    {
+      cv::cvtColor(cv_original_image, cv_original_image, cv::COLOR_BGR2GRAY);
+      cv::cvtColor(cv_undistorted_image, cv_undistorted_image, cv::COLOR_BGR2GRAY);
     }
+
+    cv::resize(cv_original_image, cv_original_image, cv_undistorted_image.size());
+    original_image_->Assign(cv_original_image.clone());
+
+    cv::Mat diff;
+    cv::absdiff(cv_original_image, cv_undistorted_image, diff);
+    cv::normalize(diff, diff, 0, 255, cv::NORM_MINMAX);
+    cv::applyColorMap(diff, diff, cv::COLORMAP_JET);
+    
+    ZoomableScrollArea* original_area = new ZoomableScrollArea(this);
+    original_area->setFrameShape(QFrame::Shape::NoFrame);
+    ImageWidget* original_image_widget = new ImageWidget(this);
+    original_area->setWidget(original_image_widget);
+    original_area->widget()->resize(QSize(camera.width, camera.height)
+                                   .scaled(camera.width, target_height, Qt::AspectRatioMode::KeepAspectRatio));
+    original_image_widget->SetImage(std::move(original_image_));
+    CollapsibleWidget* original_collapse = new CollapsibleWidget("Original", nullptr, this);
+    original_collapse->SetWidget(original_area, target_height);
+    layout->addWidget(original_collapse);
+
+    ZoomableScrollArea* undistorted_area = new ZoomableScrollArea(this);
+    undistorted_area->setFrameShape(QFrame::Shape::NoFrame);
+    ImageWidget* undistorted_image_widget = new ImageWidget(this);
+    undistorted_area->setWidget(undistorted_image_widget);
+    undistorted_area->widget()->resize(QSize(camera.width, camera.height)
+                                   .scaled(camera.width, target_height, Qt::AspectRatioMode::KeepAspectRatio));
+    undistorted_image_widget->SetImage(std::move(undistorted_image_));
+    CollapsibleWidget* undistorted_collapse = new CollapsibleWidget("Undistorted", nullptr, this);
+    undistorted_collapse->SetWidget(undistorted_area, target_height);
+    layout->addWidget(undistorted_collapse);
+
+
+    std::unique_ptr<Pixmap> diff_pixmap = std::make_unique<Pixmap>();
+    diff_pixmap->Assign(diff);
+    ZoomableScrollArea* diff_area = new ZoomableScrollArea(this);
+    diff_area->setFrameShape(QFrame::Shape::NoFrame);
+    ImageWidget* diff_image = new ImageWidget(this);
+    diff_area->setWidget(diff_image);
+    diff_area->widget()->resize(QSize(camera.width, camera.height)
+                                   .scaled(camera.width, target_height, Qt::AspectRatioMode::KeepAspectRatio));
+    diff_image->SetImage(std::move(diff_pixmap));
+    CollapsibleWidget* diff_collapse = new CollapsibleWidget("Difference", nullptr, this);
+    diff_collapse->SetWidget(diff_area, target_height);
+    layout->addWidget(diff_collapse);
 
   }
 

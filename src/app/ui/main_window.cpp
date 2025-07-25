@@ -405,7 +405,6 @@ namespace calibmar {
     calibration_stream_action_->setEnabled(true);
     undistortion_estimation_action_->setEnabled(true);
     calibration_save_action_->setEnabled(false);
-    std::cout << "COMPLETED" << std::endl;
   }
 
 

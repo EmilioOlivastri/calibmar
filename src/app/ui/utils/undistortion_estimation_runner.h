@@ -15,7 +15,5 @@ namespace calibmar {
    private:
     UndistortionEstimationWidget* undistortion_widget_;
     UndistortionEstimationDialog::Options options_;
-
-    std::unique_ptr<Pixmap> last_pixmap_;
   };
 }
