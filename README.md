@@ -76,6 +76,7 @@ make -j4
 - Apriltag detection using the more robust Kalibr library;
 - Given a video, produce a set of images for the calibration (for GoPro mainly);
 - Stream edge detection for better mechanical alignment of camera in dome;
+- Integration of undistortion estimation code within the Calibmar application;
 
 ### How to use the undistortion estimation code
 The code is in the folder app/undistortion and is named "undistortion_estimation.cpp".
@@ -89,6 +90,12 @@ To estimate the undistortion map the following files are needed as input:
 ```
 The computation of the mapping just needs to be done once, and then the remapping is real-time using the opencv functions. 
 In order to have the correct intrinsic parameters it is necessary to perform again the calibration (using the same underwater data). While the extrinsics, of course, don't change.
+
+Now the same code can be run from the app. It is just needed to run the following comand:
+```
+./build/src/app/calibmar
+```
+Then select File->Undistortion Estimation... and use the same parameters you would have used above.
 
 ### How to use the undistortion visualizer
 After estimating an undistortion map, the effect of the undistortion can be qualitatively evaluated using the visualizer, that compares the original image and the undistorted one. The visualizer code is in the folder app/undistortion and is called "undistort_visualizer.cpp".
@@ -110,6 +117,13 @@ The following inputs are needed:
 ./build/src/app/undistorter undistortion_map images_folder output_folder
 ```
 This code also functions as an example of how the undistortion could be applied during online applications.  
+
+Now the same code can be run from the app. It is just needed to run the following comand:
+```
+./build/src/app/calibmar
+```
+Then select Tools->Refraction Removal and use the same parameters you would have used above.
+
 
 ### How to use the edge detection code
 The reason as to why use edge detection is to be able to visually evaluate the misalignment along the optical axes of the camera with respect to the center of the dome. If the camera is perfectly (or almost) aligned with the dome, the underwater instrinsics will be the same as the in air intrinsics, and not true in any other case.
