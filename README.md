@@ -11,9 +11,6 @@ Features include:
 - Calibration guidance implementation of '[Calibration Wizard](https://doi.org/10.1109/iccv.2019.00158)'
 - [COLMAP](https://colmap.github.io/) compliant camera models
 
-## Install
-
-Binaries for Windows and Linux are available at https://cau-git.rz.uni-kiel.de/inf-ag-koeser/calibmar/-/releases.
 
 ## Build from Source
 
@@ -27,7 +24,7 @@ There is a known error for Windows, when installing CUDA together with Visual St
 
 ### Linux
 
-The following build has been tested under Ubuntu 22.04.
+The following build has been tested under Ubuntu 20.04.
 
 Dependencies from default Ubuntu repositories:
 
