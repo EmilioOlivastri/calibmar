@@ -53,6 +53,7 @@ namespace {
                         const std::optional<double>& prj_dist,
                         const std::optional<double>& virtual_d0,
                         int roi[4],
+                        double& execution_time,
                         calibmar::UndistortionEstimationWidget* undistortion_widget)
     {
         if (input.Width() != output.Width() || input.Height() != output.Height()) 
@@ -100,7 +101,7 @@ namespace {
         }
         undistortion_widget->SetProgress(100);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        double diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / 1000.0;
+        execution_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / 1000.0;
         //std::cout << "Mapping took: " << diff << std::endl;
         cv::remap(input.Data(), output.Data(), map, cv::noArray(), cv::INTER_LINEAR, cv::BorderTypes::BORDER_CONSTANT);
         
@@ -261,9 +262,11 @@ namespace calibmar {
     /* UNDISTORTION ESTIMATION  HERE */
     int roi[4];
     for (int i = 0; i < 4; roi[i++] = 0);
+    double execution_time = 0.0;
     /**/
     cv::Mat undist_map = UndistortPixmap(*src_pixmap, *dst_pixmap, 
                                          camera, prj_dist, virtual_d0, roi,
+                                         execution_time,
                                          undistortion_widget_);
     /**
     cv::Mat undist_map = cv::Mat::zeros(image_size.second, image_size.first, cv_src_img.type());
@@ -291,7 +294,7 @@ namespace calibmar {
     dst_pixmap->Assign(cv_roi_img);
     /* UNDISTORTION ESTIMATION  HERE */
 
-    cv::FileStorage fs(options_.output_map + "undistortion_map.yaml", cv::FileStorage::WRITE);
+    cv::FileStorage fs(options_.output_map + "/undistortion_map.yaml", cv::FileStorage::WRITE);
     fs << "ROI" << cv_roi;
     fs << "Undistortion Map" << undist_map;
     fs.release(); 
@@ -312,8 +315,9 @@ namespace calibmar {
                                original_pixmap = std::move(original_pixmap),
                                undistorted_pixmap = std::move(undistorted_pixmap),
                                camera = camera,
+                               execution_time = execution_time,
                                distances = std::make_pair(prj_dist.value_or(0.0), virtual_d0.value_or(0.0))]() mutable {
-                               undistortion_widget->EndUndistortionEstimation(new UndistortionEstimationResultWidget(camera, std::move(original_pixmap), std::move(undistorted_pixmap), distances));
+                               undistortion_widget->EndUndistortionEstimation(new UndistortionEstimationResultWidget(camera, std::move(original_pixmap), std::move(undistorted_pixmap), distances, execution_time));
                               });
     
 

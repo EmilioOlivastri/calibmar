@@ -17,6 +17,7 @@ namespace calibmar {
                                        std::unique_ptr<Pixmap> original_image,
                                        std::unique_ptr<Pixmap> undistorted_image,
                                        std::pair<double, double> distances, 
+                                       double execution_time,
                                        QWidget* parent = nullptr);
 
     UndistortionEstimationResultWidget(const std::string& message, QWidget* parent = nullptr);

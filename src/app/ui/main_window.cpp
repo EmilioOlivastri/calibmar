@@ -13,6 +13,7 @@
 #include "ui/dialogs/model_explorer_dialog.h"
 #include "ui/dialogs/stereo_file_calibration_dialog.h"
 #include "ui/dialogs/stream_calibration_dialog.h"
+#include "ui/dialogs/refraction_removal_dialog.h"
 #include "ui/dialogs/test_widget_dialog.h"
 #include "ui/dialogs/undistortion_dialog.h"
 
@@ -274,6 +275,11 @@ namespace calibmar {
     });
     toolsMenu->addAction("&Undistort Images", this, []() {
       UndistortionDialog dialog;
+      dialog.exec();
+    });
+
+    toolsMenu->addAction("&Refraction Removal", this, []() {
+      RefractionRemovalDialog dialog;
       dialog.exec();
     });
 

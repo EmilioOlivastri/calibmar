@@ -10,9 +10,9 @@ def list_images(folder_path, extensions=['.png', '.jpg', '.jpeg', '.bmp', '.tiff
 
 def main():
 
-    print('Converting video to images...')
-    parser = argparse.ArgumentParser(description='Convert video to images at desired frame rate')
-    parser.add_argument('--input_path', type=str, help='Path to output directory')
+    print('Resizing images in progress...')
+    parser = argparse.ArgumentParser(description='Resize images in a directory at a specified factor.')
+    parser.add_argument('--input_path', type=str, help='Path to input directory')
     parser.add_argument('--output_path', type=str, help='Path to output directory')
     parser.add_argument('--resize_factor', type=float, default=0.5, help='Resize factor for images')
     

@@ -43,34 +43,9 @@ td {
     return {first, last};
   }
 
-  void FormatTableRows(std::ostream& stream, const std::vector<std::string>& first_col, const std::vector<std::string>& first_row,
-                       const std::vector<double>& second_row, const std::vector<double>& third_row) {
-    stream << "<table>\n<tbody>\n<tr>"
-           << "<td><b>" << first_col[0] << ":</b></td>\n";
-    for (auto& value : first_row) {
-      stream << "<td><b>" << value << "</b></td>\n";
-    }
-    stream << "</tr>\n<tr>";
-    // parameter values
-    stream << "<td><b>" << first_col[1] << "</b></td>";
-    for (auto& value : second_row) {
-      stream << "<td>" << value << "</td>\n";
-    }
-    stream << "</tr>\n";
-    // parameter std dev
-    if (third_row.size() > 0) {
-      stream << "<tr>\n<td><b>" << first_col[2] << "</b></td>";
-      for (auto& value : third_row) {
-        stream << "<td>" << value << "</td>\n";
-      }
-      stream << "</tr>";
-    }
-
-    stream << "\n</tbody>\n</table>\n";
-  }
 
   void GenerateResultHtml(std::ostream& stream, const colmap::Camera& camera, 
-                          const std::pair<double, double>& distances) {
+                          const std::pair<double, double>& distances, double execution_time) {
     // Title
     stream << "<h2>Undistortion Estimation Summary</h2>" << std::endl;
     
@@ -89,52 +64,18 @@ td {
            << std::endl;
     
     // Undistortion parameters
-    stream << "<h3>Projection Distance &amp; Virtual D0:</h3>" << std::endl;
-    stream << "<p>" << distances.first << " " << distances.second << "</p>";
+    stream << "<h3>Projection Distance:</h3> " << "<p>" << distances.first << "</p>" << std::endl;
+    if (camera.RefracModelName() == "FLATPORT")
+      stream << "<h3>Virtual D0:</h3>" << "<p>" << distances.second << "</p>" << std::endl;  
     stream << std::endl << std::endl;
+
+    // Execution time
+    stream << "<h3>Execution Time:</h3>" << "<p> " << std::fixed << std::setprecision(2)
+           << execution_time << " seconds</p>" << std::endl;
     
   }
 
-  void GeneratePerViewHtml(std::ostream& stream, const calibmar::Calibration& calibration) {
-    // per view rms & per view observation
-    if (calibration.PerViewRms().size() > 0) {
-      struct Stats {
-        std::string name;
-        double rms;
-        int point_3d_count;
-      };
-      std::vector<Stats> stats;
-      bool contains_3d_count = calibration.PerView3DPointCount().size() > 0;
-      stats.reserve(calibration.Images().size());
-      for (size_t i = 0; i < calibration.Images().size(); i++) {
-        stats.push_back({std::filesystem::path(calibration.Image(i).Name()).filename().string(), calibration.PerViewRms()[i],
-                         contains_3d_count ? calibration.PerView3DPointCount()[i] : -1});
-      }
-      std::sort(stats.begin(), stats.end(), [](Stats& a, Stats& b) { return a.rms > b.rms; });
-
-      stream << std::endl
-             << std::endl
-             << "<h3>Per View RMS (" << stats.size() << " images, ordered descending):</h3>" << std::endl;
-      stream << "<table>\n<tbody>\n";
-
-      stream << "\n<tr>\n<td><b>Image</b></td>\n<td><b>RMS</b></td>\n";
-      if (contains_3d_count) {
-        stream << "<td><b>Observed 3D Points</b></td>\n";
-      }
-      stream << "</tr>\n";
-
-      for (const auto& stat : stats) {
-        stream << "\n<tr>\n<td>" << stat.name << "</td>\n<td>" << stat.rms << "</td>\n";
-        // optionally add 3d point count if it exists
-        if (contains_3d_count) {
-          stream << "<td>" << stat.point_3d_count << "</td>\n";
-        }
-        stream << "</tr>\n";
-      }
-
-      stream << "\n</tbody>\n</table>\n";
-    }
-  }
+  
 }
 
 namespace calibmar {
@@ -142,6 +83,7 @@ namespace calibmar {
                                                                          std::unique_ptr<Pixmap> original_image, 
                                                                          std::unique_ptr<Pixmap> undistorted_image,
                                                                          std::pair<double, double> distances,
+                                                                         double execution_time,
                                                                          QWidget* parent) : QWidget(parent), 
                                                                                             original_image_(std::move(original_image)), 
                                                                                             undistorted_image_(std::move(undistorted_image)) 
@@ -150,7 +92,7 @@ namespace calibmar {
     layout->setContentsMargins(0, 0, 0, 0);
     // Result report
     std::stringstream result_stream;
-    GenerateResultHtml(result_stream, camera, distances);
+    GenerateResultHtml(result_stream, camera, distances, execution_time);
     QTextDocument* doc = new QTextDocument(this);
     doc->setDefaultStyleSheet(QString::fromStdString(cssStyle));
     QString text = QString::fromStdString(result_stream.str());
