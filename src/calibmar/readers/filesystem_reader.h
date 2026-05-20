@@ -19,6 +19,7 @@ namespace calibmar {
     ImageReader::Status Next(Image& image, Pixmap& pixmap);
     int ImagesWidth();
     int ImagesHeight();
+    int ImagesCount() const { return image_paths_.size(); }
 
    private:
     // Image reader options.
