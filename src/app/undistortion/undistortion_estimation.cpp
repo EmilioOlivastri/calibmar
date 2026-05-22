@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <sstream>
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core.hpp>
@@ -25,11 +27,14 @@ cv::Mat UndistortPixmap(const calibmar::Pixmap& input, calibmar::Pixmap& output,
 bool fixRowRoi(const cv::Mat& gray, int roi[4], int roi_id);
 bool fixColRoi(const cv::Mat& gray, int roi[4], int roi_id);
 
+bool readD0Params(const std::string& path, double& virtual_d0, double& prj_distance);
+
 int main(int argc, char** argv) 
 {
-    if (argc < 4) 
+    if (argc < 3) 
     {
-        std::cerr << "Usage: " << argv[0] << " <camera_parameters.yaml> <path 2 image> <distance> <virtual distance>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <camera_parameters.yaml> <path 2 image> <d0.yaml>" << std::endl;
+        //std::cerr << "Usage: " << argv[0] << " <camera_parameters.yaml> <path 2 image> <distance> <virtual distance>" << std::endl;
         std::cerr << "Virtual distance parameters is used only for the flat port computations" << std::endl;
         return 1;
     }
@@ -69,19 +74,16 @@ int main(int argc, char** argv)
     std::cout << "Refractive parameters: " << camera.RefracParamsInfo() << std::endl;
     std::cout << "Refractive parameters: " << camera.RefracParamsToString() << std::endl;
 
-    std::optional<double> prj_dist, virtual_d0;
-    prj_dist = argc >=4 ? std::optional<double>(std::stod(argv[3])) : std::nullopt;
-    virtual_d0 = argc >=5 ? std::optional<double>(std::stod(argv[4])) : std::nullopt;
-
-    if (p.housing_model.value() == calibmar::HousingInterfaceType::DoubleLayerPlanarRefractive 
-        && !virtual_d0.has_value() )
-    {
-        std::cerr << "Virtual distance is required for planar refractive model!!" << std::endl;
-        return 1;
+    double prj_dist, virtual_d0;
+    if (!readD0Params(argv[3], virtual_d0, prj_dist)) {
+        std::cerr << "Error: could not read D0 params from '" << argv[3] << "'" << std::endl;
+        return EXIT_FAILURE;
     }
 
-    if (p.housing_model.value() == calibmar::HousingInterfaceType::DoubleLayerSphericalRefractive 
-        && prj_dist.has_value() ) virtual_d0 = 0.0;
+    if (p.housing_model.value() == calibmar::HousingInterfaceType::DoubleLayerSphericalRefractive) 
+        virtual_d0 = 0.0;
+
+    std::cout << "Using prj_dist: " << prj_dist << " | virtual_d0: " << virtual_d0 << std::endl;
 
     int roi[4];
     for (int i = 0; i < 4; roi[i++] = 0);
@@ -238,6 +240,28 @@ void DistortPixmap(const calibmar::Pixmap& input,
 
     return;
 }
+
+bool readD0Params(const std::string& path, double& virtual_d0, double& prj_distance)
+{
+    std::ifstream file(path);
+    if (!file.is_open())
+        return false;
+
+    bool got_d0 = false, got_prj = false;
+    std::string line;
+    while (std::getline(file, line)) 
+    {
+        std::istringstream ss(line);
+        std::string key;
+        if (!std::getline(ss, key, ':')) continue;
+        // trim leading whitespace from key
+        key.erase(0, key.find_first_not_of(" \t"));
+        if (key == "virtual_d0") { ss >> virtual_d0; virtual_d0 /= 1000.0; got_d0 = true; }
+        else if (key == "prj_distance") { ss >> prj_distance; got_prj = true; }
+    }
+    return got_d0 && got_prj;
+}
+
 
 bool fixRowRoi(const cv::Mat& gray, int roi[4], int roi_id)
 {

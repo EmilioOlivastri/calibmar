@@ -184,7 +184,7 @@ int main(int argc, char** argv)
     std::cout << "Calibration RMS: " << calibration.CalibrationRms() << std::endl;
     colmap::Camera& camera = calibration.Camera();
     std::cout << "Camera model: " << camera.ModelName() << std::endl;
-    std::string out_yaml = std::string(argv[1]).substr(0, std::string(argv[1]).rfind('/')) + "/flatportd0.yaml";
+    std::string out_yaml = std::string(argv[1]).substr(0, std::string(argv[1]).rfind('/')) + "/d0.yaml";
     createD0EstimationYaml(out_yaml, calibration);
     std::cout << "Result written to: " << out_yaml << std::endl;
 
